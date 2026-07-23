@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#17645b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="下班倒计时">
+    <meta name="description" content="中午和下午两段下班倒计时。">
+    <title>下班倒计时</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+    <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar" aria-label="应用信息">
+        <div>
+          <p class="eyebrow" id="today-label">今天</p>
+          <h1>下班倒计时</h1>
+        </div>
+        <button class="icon-button" id="open-settings" type="button" aria-label="打开设置">
+          <span aria-hidden="true">⋯</span>
+        </button>
+      </section>
+
+      <section class="hero-panel" aria-live="polite">
+        <p class="stage-label" id="stage-label">正在计算</p>
+        <div class="countdown" id="countdown">--:--:--</div>
+        <p class="target-line" id="target-line">读取本机时间</p>
+        <div class="progress-track" aria-hidden="true">
+          <span id="progress-bar"></span>
+        </div>
+      </section>
+
+      <section class="fish-panel" aria-label="摸鱼时间">
+        <div class="fish-copy">
+          <p>今日摸鱼额度</p>
+          <strong id="fish-remaining">--分钟</strong>
+          <span id="fish-status">先干一会儿，再快乐一下。</span>
+        </div>
+        <div class="fish-actions">
+          <button type="button" data-fish-add="5">+5</button>
+          <button type="button" data-fish-add="15">+15</button>
+          <button type="button" id="fish-reset">清零</button>
+        </div>
+      </section>
+
+      <section class="phase-grid" aria-label="两段下班时间">
+        <article class="phase-card" id="noon-card">
+          <div class="phase-card-top">
+            <p>中午下班</p>
+            <strong id="noon-time-label">12:00</strong>
+          </div>
+          <p class="phase-status" id="noon-status">未开始</p>
+        </article>
+
+        <article class="phase-card" id="evening-card">
+          <div class="phase-card-top">
+            <p>下午下班</p>
+            <strong id="evening-time-label">18:00</strong>
+          </div>
+          <p class="phase-status" id="evening-status">未开始</p>
+        </article>
+      </section>
+
+      <section class="summary-row" aria-label="当前规则">
+        <div>
+          <span>计时日</span>
+          <strong id="active-days-label">每天</strong>
+        </div>
+        <div>
+          <span>下次目标</span>
+          <strong id="next-target-label">中午</strong>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
+      <form method="dialog" class="settings-card" id="settings-form">
+        <div class="settings-head">
+          <h2 id="settings-title">设置</h2>
+          <button class="icon-button compact" id="close-settings" value="close" aria-label="关闭设置">
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
+
+        <label class="field">
+          <span>中午下班</span>
+          <input id="noon-time" name="noonTime" type="time" required>
+        </label>
+
+        <label class="field">
+          <span>下午下班</span>
+          <input id="evening-time" name="eveningTime" type="time" required>
+        </label>
+
+        <label class="field">
+          <span>每日摸鱼额度（分钟）</span>
+          <input id="fish-allowance" name="fishAllowance" type="number" inputmode="numeric" min="0" max="240" step="5" required>
+        </label>
+
+        <fieldset class="day-picker">
+          <legend>计时日期</legend>
+          <div class="day-options" id="day-options"></div>
+        </fieldset>
+
+        <p class="form-error" id="form-error" role="alert"></p>
+
+        <div class="settings-actions">
+          <button class="secondary-button" id="reset-settings" type="button">恢复默认</button>
+          <button class="primary-button" id="save-settings" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
