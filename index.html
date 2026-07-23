@@ -7,7 +7,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="下班倒计时">
-    <meta name="description" content="中午和下午两段下班倒计时。">
+    <meta name="description" content="周一至周五上班、下班和摸鱼正计时。">
     <title>下班倒计时</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
@@ -47,13 +47,29 @@
         </div>
       </section>
 
-      <section class="phase-grid" aria-label="两段下班时间">
+      <section class="phase-grid" aria-label="工作时间表">
+        <article class="phase-card" id="morning-start-card">
+          <div class="phase-card-top">
+            <p>上午上班</p>
+            <strong id="morning-start-time-label">09:30</strong>
+          </div>
+          <p class="phase-status" id="morning-start-status">未开始</p>
+        </article>
+
         <article class="phase-card" id="noon-card">
           <div class="phase-card-top">
             <p>中午下班</p>
             <strong id="noon-time-label">12:00</strong>
           </div>
           <p class="phase-status" id="noon-status">未开始</p>
+        </article>
+
+        <article class="phase-card" id="afternoon-start-card">
+          <div class="phase-card-top">
+            <p>下午上班</p>
+            <strong id="afternoon-start-time-label">14:00</strong>
+          </div>
+          <p class="phase-status" id="afternoon-start-status">未开始</p>
         </article>
 
         <article class="phase-card" id="evening-card">
@@ -68,11 +84,11 @@
       <section class="summary-row" aria-label="当前规则">
         <div>
           <span>计时日</span>
-          <strong id="active-days-label">每天</strong>
+          <strong id="active-days-label">周一至周五</strong>
         </div>
         <div>
           <span>下次目标</span>
-          <strong id="next-target-label">中午</strong>
+          <strong id="next-target-label">上午上班</strong>
         </div>
       </section>
     </main>
@@ -87,8 +103,18 @@
         </div>
 
         <label class="field">
+          <span>上午上班</span>
+          <input id="morning-start-time" name="morningStartTime" type="time" required>
+        </label>
+
+        <label class="field">
           <span>中午下班</span>
           <input id="noon-time" name="noonTime" type="time" required>
+        </label>
+
+        <label class="field">
+          <span>下午上班</span>
+          <input id="afternoon-start-time" name="afternoonStartTime" type="time" required>
         </label>
 
         <label class="field">

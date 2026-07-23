@@ -2,10 +2,12 @@ const STORAGE_KEY = "offwork-countdown.v1.settings";
 const FISH_STORAGE_KEY = "offwork-countdown.v1.fishRecords";
 
 const DEFAULT_SETTINGS = {
+  morningStartTime: "09:30",
   noonTime: "12:00",
+  afternoonStartTime: "14:00",
   eveningTime: "18:00",
   fishAllowance: 30,
-  activeDays: [0, 1, 2, 3, 4, 5, 6],
+  activeDays: [1, 2, 3, 4, 5],
 };
 
 const DAY_OPTIONS = [
@@ -28,11 +30,17 @@ const els = {
   fishStatus: document.querySelector("#fish-status"),
   fishToggle: document.querySelector("#fish-toggle"),
   fishReset: document.querySelector("#fish-reset"),
+  morningStartCard: document.querySelector("#morning-start-card"),
   noonCard: document.querySelector("#noon-card"),
+  afternoonStartCard: document.querySelector("#afternoon-start-card"),
   eveningCard: document.querySelector("#evening-card"),
+  morningStartTimeLabel: document.querySelector("#morning-start-time-label"),
   noonTimeLabel: document.querySelector("#noon-time-label"),
+  afternoonStartTimeLabel: document.querySelector("#afternoon-start-time-label"),
   eveningTimeLabel: document.querySelector("#evening-time-label"),
+  morningStartStatus: document.querySelector("#morning-start-status"),
   noonStatus: document.querySelector("#noon-status"),
+  afternoonStartStatus: document.querySelector("#afternoon-start-status"),
   eveningStatus: document.querySelector("#evening-status"),
   activeDaysLabel: document.querySelector("#active-days-label"),
   nextTargetLabel: document.querySelector("#next-target-label"),
@@ -40,7 +48,9 @@ const els = {
   openSettings: document.querySelector("#open-settings"),
   closeSettings: document.querySelector("#close-settings"),
   form: document.querySelector("#settings-form"),
+  morningStartInput: document.querySelector("#morning-start-time"),
   noonInput: document.querySelector("#noon-time"),
+  afternoonStartInput: document.querySelector("#afternoon-start-time"),
   eveningInput: document.querySelector("#evening-time"),
   fishAllowanceInput: document.querySelector("#fish-allowance"),
   dayOptions: document.querySelector("#day-options"),
@@ -117,11 +127,14 @@ function loadSettings() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = JSON.parse(raw);
+    const hasWorkStartTimes = isTime(parsed.morningStartTime) && isTime(parsed.afternoonStartTime);
     return {
+      morningStartTime: hasWorkStartTimes ? parsed.morningStartTime : DEFAULT_SETTINGS.morningStartTime,
       noonTime: isTime(parsed.noonTime) ? parsed.noonTime : DEFAULT_SETTINGS.noonTime,
+      afternoonStartTime: hasWorkStartTimes ? parsed.afternoonStartTime : DEFAULT_SETTINGS.afternoonStartTime,
       eveningTime: isTime(parsed.eveningTime) ? parsed.eveningTime : DEFAULT_SETTINGS.eveningTime,
       fishAllowance: normalizeFishAllowance(parsed.fishAllowance),
-      activeDays: normalizeActiveDays(parsed.activeDays),
+      activeDays: hasWorkStartTimes ? normalizeActiveDays(parsed.activeDays) : [...DEFAULT_SETTINGS.activeDays],
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -158,7 +171,9 @@ function renderDayOptions() {
 }
 
 function hydrateSettingsForm() {
+  els.morningStartInput.value = settings.morningStartTime;
   els.noonInput.value = settings.noonTime;
+  els.afternoonStartInput.value = settings.afternoonStartTime;
   els.eveningInput.value = settings.eveningTime;
   els.fishAllowanceInput.value = String(settings.fishAllowance);
   els.formError.textContent = "";
@@ -172,7 +187,9 @@ function readSettingsForm() {
   const checkedDays = [...els.form.querySelectorAll('input[name="activeDays"]:checked')]
     .map((input) => Number(input.value));
   return {
+    morningStartTime: els.morningStartInput.value,
     noonTime: els.noonInput.value,
+    afternoonStartTime: els.afternoonStartInput.value,
     eveningTime: els.eveningInput.value,
     fishAllowance: normalizeFishAllowance(els.fishAllowanceInput.value),
     activeDays: normalizeActiveDays(checkedDays),
@@ -180,11 +197,14 @@ function readSettingsForm() {
 }
 
 function validateSettings(candidate) {
-  if (!isTime(candidate.noonTime) || !isTime(candidate.eveningTime)) {
-    return "请填写完整的下班时间。";
+  if (!isTime(candidate.morningStartTime) || !isTime(candidate.noonTime)
+    || !isTime(candidate.afternoonStartTime) || !isTime(candidate.eveningTime)) {
+    return "请填写完整的上班和下班时间。";
   }
-  if (timeToMinutes(candidate.noonTime) >= timeToMinutes(candidate.eveningTime)) {
-    return "中午下班时间要早于下午下班时间。";
+  if (timeToMinutes(candidate.morningStartTime) >= timeToMinutes(candidate.noonTime)
+    || timeToMinutes(candidate.noonTime) >= timeToMinutes(candidate.afternoonStartTime)
+    || timeToMinutes(candidate.afternoonStartTime) >= timeToMinutes(candidate.eveningTime)) {
+    return "时间顺序应为：上午上班 < 中午下班 < 下午上班 < 下午下班。";
   }
   if (!Number.isInteger(candidate.fishAllowance) || candidate.fishAllowance < 0 || candidate.fishAllowance > 240) {
     return "每日摸鱼额度请填写 0 到 240 分钟。";
@@ -202,9 +222,22 @@ function tick() {
 }
 
 function getCountdownState(now, currentSettings) {
+  const morningStart = dateAtTime(now, currentSettings.morningStartTime);
   const noon = dateAtTime(now, currentSettings.noonTime);
+  const afternoonStart = dateAtTime(now, currentSettings.afternoonStartTime);
   const evening = dateAtTime(now, currentSettings.eveningTime);
   const todayIsActive = currentSettings.activeDays.includes(now.getDay());
+
+  if (todayIsActive && now < morningStart) {
+    return {
+      mode: "counting",
+      phase: "morning-start",
+      label: "距离上午上班",
+      target: morningStart,
+      periodStart: startOfDay(now),
+      periodEnd: morningStart,
+    };
+  }
 
   if (todayIsActive && now < noon) {
     return {
@@ -212,8 +245,19 @@ function getCountdownState(now, currentSettings) {
       phase: "noon",
       label: "距离中午下班",
       target: noon,
-      periodStart: startOfDay(now),
+      periodStart: morningStart,
       periodEnd: noon,
+    };
+  }
+
+  if (todayIsActive && now < afternoonStart) {
+    return {
+      mode: "counting",
+      phase: "afternoon-start",
+      label: "距离下午上班",
+      target: afternoonStart,
+      periodStart: noon,
+      periodEnd: afternoonStart,
     };
   }
 
@@ -223,19 +267,19 @@ function getCountdownState(now, currentSettings) {
       phase: "evening",
       label: "距离下午下班",
       target: evening,
-      periodStart: noon,
+      periodStart: afternoonStart,
       periodEnd: evening,
     };
   }
 
-  const nextNoon = findNextActiveDateAtTime(now, currentSettings.noonTime, currentSettings.activeDays);
+  const nextMorningStart = findNextActiveDateAtTime(now, currentSettings.morningStartTime, currentSettings.activeDays);
   return {
     mode: todayIsActive ? "done" : "rest",
     phase: "next",
-    label: todayIsActive ? "今天两段下班已完成" : "今天不计时",
-    target: nextNoon,
+    label: todayIsActive ? "今天已下班" : "今天不计时",
+    target: nextMorningStart,
     periodStart: now,
-    periodEnd: nextNoon,
+    periodEnd: nextMorningStart,
   };
 }
 
@@ -250,10 +294,12 @@ function renderState(now, state) {
   els.stageLabel.textContent = state.label;
   els.countdown.textContent = formatDuration(state.target - now);
   els.targetLine.textContent = formatTargetLine(state.target, state.phase);
+  els.morningStartTimeLabel.textContent = settings.morningStartTime;
   els.noonTimeLabel.textContent = settings.noonTime;
+  els.afternoonStartTimeLabel.textContent = settings.afternoonStartTime;
   els.eveningTimeLabel.textContent = settings.eveningTime;
   els.activeDaysLabel.textContent = formatActiveDays(settings.activeDays);
-  els.nextTargetLabel.textContent = state.phase === "evening" ? "下午" : "中午";
+  els.nextTargetLabel.textContent = getPhaseLabel(state.phase);
 
   renderFishPanel(now);
   renderPhaseCards(now, state);
@@ -289,28 +335,44 @@ function renderFishPanel(now) {
 }
 
 function renderPhaseCards(now, state) {
+  const morningStart = dateAtTime(now, settings.morningStartTime);
   const noon = dateAtTime(now, settings.noonTime);
+  const afternoonStart = dateAtTime(now, settings.afternoonStartTime);
   const evening = dateAtTime(now, settings.eveningTime);
   const activeToday = settings.activeDays.includes(now.getDay());
 
+  els.morningStartCard.classList.toggle("is-active", state.phase === "morning-start");
   els.noonCard.classList.toggle("is-active", state.phase === "noon");
+  els.afternoonStartCard.classList.toggle("is-active", state.phase === "afternoon-start");
   els.eveningCard.classList.toggle("is-active", state.phase === "evening");
+  els.morningStartCard.classList.toggle("is-done", activeToday && now >= morningStart);
   els.noonCard.classList.toggle("is-done", activeToday && now >= noon);
+  els.afternoonStartCard.classList.toggle("is-done", activeToday && now >= afternoonStart);
   els.eveningCard.classList.toggle("is-done", activeToday && now >= evening);
 
   if (!activeToday) {
+    els.morningStartStatus.textContent = "今天不计时";
     els.noonStatus.textContent = "今天不计时";
+    els.afternoonStartStatus.textContent = "今天不计时";
     els.eveningStatus.textContent = "今天不计时";
     return;
   }
 
+  els.morningStartStatus.textContent = now < morningStart
+    ? `还剩 ${formatShortDuration(morningStart - now)}`
+    : "已上班";
+
   els.noonStatus.textContent = now < noon
     ? `还剩 ${formatShortDuration(noon - now)}`
-    : "已到点";
+    : "已下班";
+
+  els.afternoonStartStatus.textContent = now < afternoonStart
+    ? `还剩 ${formatShortDuration(afternoonStart - now)}`
+    : "已上班";
 
   els.eveningStatus.textContent = now < evening
     ? `还剩 ${formatShortDuration(evening - now)}`
-    : "已到点";
+    : "已下班";
 }
 
 function renderProgress(now, state) {
@@ -367,8 +429,16 @@ function formatTargetLine(target, phase) {
     day: "numeric",
     weekday: "short",
   }).format(target);
-  const label = phase === "evening" ? "下午下班" : "中午下班";
+  const label = getPhaseLabel(phase);
   return `${dayText} ${formatClock(target)} ${label}`;
+}
+
+function getPhaseLabel(phase) {
+  if (phase === "morning-start" || phase === "next") return "上午上班";
+  if (phase === "noon") return "中午下班";
+  if (phase === "afternoon-start") return "下午上班";
+  if (phase === "evening") return "下午下班";
+  return "上午上班";
 }
 
 function formatClock(date) {
@@ -376,6 +446,7 @@ function formatClock(date) {
 }
 
 function formatActiveDays(activeDays) {
+  if (activeDays.length === 5 && activeDays.every((day, index) => day === index + 1)) return "周一至周五";
   if (activeDays.length === 7) return "每天";
   const ordered = DAY_OPTIONS.filter(([, value]) => activeDays.includes(value)).map(([label]) => `周${label}`);
   return ordered.join("、");
