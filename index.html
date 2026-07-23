@@ -7,12 +7,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="下班倒计时">
-    <meta name="description" content="周一至周五出门、上班、下班和摸鱼正计时。">
+    <meta name="description" content="周一至周五起床、出门、上班、下班和摸鱼正计时。">
     <title>下班倒计时</title>
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
     <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
-    <link rel="stylesheet" href="./styles.css?v=20260723-6">
+    <link rel="stylesheet" href="./styles.css?v=20260724-7">
   </head>
   <body>
     <main class="app-shell">
@@ -20,7 +20,7 @@
         <div>
           <p class="eyebrow" id="today-label">今天</p>
           <h1>下班倒计时</h1>
-          <p class="version-label" id="version-label">版本 2026.07.23-6</p>
+          <p class="version-label" id="version-label">版本 2026.07.24-7</p>
         </div>
         <button class="icon-button" id="open-settings" type="button" aria-label="打开设置">
           <span aria-hidden="true">⋯</span>
@@ -33,6 +33,18 @@
         <p class="target-line" id="target-line">读取本机时间</p>
         <div class="progress-track" aria-hidden="true">
           <span id="progress-bar"></span>
+        </div>
+      </section>
+
+      <section class="wake-up-panel" id="wake-up-panel" aria-label="起床倒计时" aria-live="polite">
+        <div class="wake-up-copy">
+          <p>起床倒计时</p>
+          <strong id="wake-up-countdown">--:--:--</strong>
+          <span id="wake-up-status">周一至周五 07:30 起床。</span>
+        </div>
+        <div class="wake-up-time">
+          <span>起床</span>
+          <strong id="wake-up-time-label">07:30</strong>
         </div>
       </section>
 
@@ -125,6 +137,11 @@
         </div>
 
         <label class="field">
+          <span>起床</span>
+          <input id="wake-up-time" name="wakeUpTime" type="time" required>
+        </label>
+
+        <label class="field">
           <span>上班出门</span>
           <input id="leave-time" name="leaveTime" type="time" required>
         </label>
@@ -168,6 +185,6 @@
       </form>
     </dialog>
 
-    <script src="./app.js?v=20260723-6" defer></script>
+    <script src="./app.js?v=20260724-7" defer></script>
   </body>
 </html>

@@ -1,9 +1,9 @@
-const CACHE_NAME = "offwork-countdown-v6";
+const CACHE_NAME = "offwork-countdown-v7";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css?v=20260723-6",
-  "./app.js?v=20260723-6",
+  "./styles.css?v=20260724-7",
+  "./app.js?v=20260724-7",
   "./manifest.webmanifest",
   "./icons/apple-touch-icon.png",
   "./icons/icon-192.png",
