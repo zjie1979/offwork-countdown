@@ -30,6 +30,9 @@ const els = {
   fishStatus: document.querySelector("#fish-status"),
   fishToggle: document.querySelector("#fish-toggle"),
   fishReset: document.querySelector("#fish-reset"),
+  wakeLabel: document.querySelector("#wake-label"),
+  wakeStatus: document.querySelector("#wake-status"),
+  wakeToggle: document.querySelector("#wake-toggle"),
   morningStartCard: document.querySelector("#morning-start-card"),
   noonCard: document.querySelector("#noon-card"),
   afternoonStartCard: document.querySelector("#afternoon-start-card"),
@@ -61,6 +64,9 @@ const els = {
 let settings = loadSettings();
 let fishRecords = loadFishRecords();
 let timerId;
+let wakeLock = null;
+let wakeLockWanted = false;
+let wakeLockMessage = "";
 
 init();
 
@@ -68,6 +74,7 @@ function init() {
   renderDayOptions();
   hydrateSettingsForm();
   bindEvents();
+  initWakeLockUi();
   tick();
   timerId = window.setInterval(tick, 1000);
   registerServiceWorker();
@@ -113,6 +120,16 @@ function bindEvents() {
 
   els.fishReset.addEventListener("click", () => {
     resetTodayFishTimer();
+  });
+
+  els.wakeToggle.addEventListener("click", () => {
+    toggleWakeLock();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && wakeLockWanted && !wakeLock) {
+      requestWakeLock();
+    }
   });
 
   window.addEventListener("beforeunload", () => {
@@ -380,6 +397,88 @@ function renderProgress(now, state) {
   const passed = now - state.periodStart;
   const ratio = total > 0 ? Math.max(0, Math.min(1, passed / total)) : 1;
   els.progressBar.style.width = `${Math.round(ratio * 100)}%`;
+}
+
+function initWakeLockUi() {
+  if (!isWakeLockSupported()) {
+    wakeLockMessage = window.isSecureContext ? "当前浏览器不支持屏幕常亮。" : "需要 HTTPS 才能使用屏幕常亮。";
+    renderWakeLock();
+    return;
+  }
+  wakeLockMessage = "打开后，页面可见时保持常亮。";
+  renderWakeLock();
+}
+
+async function toggleWakeLock() {
+  if (!isWakeLockSupported()) {
+    wakeLockMessage = window.isSecureContext ? "当前浏览器不支持屏幕常亮。" : "需要 HTTPS 才能使用屏幕常亮。";
+    renderWakeLock();
+    return;
+  }
+
+  if (wakeLock) {
+    wakeLockWanted = false;
+    await releaseWakeLock();
+    wakeLockMessage = "已关闭。";
+    renderWakeLock();
+    return;
+  }
+
+  wakeLockWanted = true;
+  await requestWakeLock();
+}
+
+async function requestWakeLock() {
+  if (!isWakeLockSupported()) {
+    renderWakeLock();
+    return;
+  }
+
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLockMessage = "已开启，页面可见时保持常亮。";
+    wakeLock.addEventListener("release", () => {
+      wakeLock = null;
+      wakeLockMessage = wakeLockWanted ? "已被系统暂停，回到页面后会尝试恢复。" : "已关闭。";
+      renderWakeLock();
+    });
+  } catch (error) {
+    wakeLock = null;
+    wakeLockWanted = false;
+    wakeLockMessage = getWakeLockErrorMessage(error);
+  }
+  renderWakeLock();
+}
+
+async function releaseWakeLock() {
+  if (!wakeLock) return;
+  const lock = wakeLock;
+  wakeLock = null;
+  try {
+    await lock.release();
+  } catch {
+    // The system may have already released it.
+  }
+}
+
+function renderWakeLock() {
+  const supported = isWakeLockSupported();
+  els.wakeToggle.disabled = !supported;
+  els.wakeToggle.classList.toggle("is-active", Boolean(wakeLock));
+  els.wakeToggle.setAttribute("aria-pressed", wakeLock ? "true" : "false");
+  els.wakeToggle.textContent = wakeLock ? "关闭" : "开启";
+  els.wakeLabel.textContent = supported ? (wakeLock ? "已开启" : "未开启") : "不可用";
+  els.wakeStatus.textContent = wakeLockMessage;
+}
+
+function isWakeLockSupported() {
+  return window.isSecureContext && "wakeLock" in navigator;
+}
+
+function getWakeLockErrorMessage(error) {
+  const name = error && error.name ? error.name : "";
+  if (name === "NotAllowedError") return "系统暂不允许开启，可能是低电量或页面未激活。";
+  return "开启失败，请稍后再试。";
 }
 
 function dateAtTime(baseDate, timeValue) {

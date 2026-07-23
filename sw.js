@@ -1,4 +1,4 @@
-const CACHE_NAME = "offwork-countdown-v3";
+const CACHE_NAME = "offwork-countdown-v4";
 const ASSETS = [
   "./",
   "./index.html",
