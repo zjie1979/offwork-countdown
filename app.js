@@ -1,5 +1,6 @@
 const STORAGE_KEY = "offwork-countdown.v1.settings";
 const FISH_STORAGE_KEY = "offwork-countdown.v1.fishRecords";
+const APP_VERSION = "2026.07.23-5";
 
 const DEFAULT_SETTINGS = {
   morningStartTime: "09:30",
@@ -22,6 +23,7 @@ const DAY_OPTIONS = [
 
 const els = {
   todayLabel: document.querySelector("#today-label"),
+  versionLabel: document.querySelector("#version-label"),
   stageLabel: document.querySelector("#stage-label"),
   countdown: document.querySelector("#countdown"),
   targetLine: document.querySelector("#target-line"),
@@ -71,6 +73,7 @@ let wakeLockMessage = "";
 init();
 
 function init() {
+  els.versionLabel.textContent = `版本 ${APP_VERSION}`;
   renderDayOptions();
   hydrateSettingsForm();
   bindEvents();
@@ -679,7 +682,18 @@ function isSameDate(a, b) {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("./sw.js");
+      await registration.update();
+    } catch {
+      // The app still works online without a service worker.
+    }
   });
 }

@@ -1,9 +1,9 @@
-const CACHE_NAME = "offwork-countdown-v4";
+const CACHE_NAME = "offwork-countdown-v5";
 const ASSETS = [
   "./",
   "./index.html",
-  "./styles.css",
-  "./app.js",
+  "./styles.css?v=20260723-5",
+  "./app.js?v=20260723-5",
   "./manifest.webmanifest",
   "./icons/apple-touch-icon.png",
   "./icons/icon-192.png",
@@ -32,15 +32,20 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type === "opaque") {
-          return response;
-        }
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+    fetch(event.request).then((response) => {
+      if (!response || response.status !== 200 || response.type === "opaque") {
         return response;
+      }
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+      return response;
+    }).catch(() => {
+      return caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        if (event.request.mode === "navigate") {
+          return caches.match(new URL("./index.html", self.registration.scope).toString());
+        }
+        return caches.match(new URL("./", self.registration.scope).toString());
       });
     })
   );
