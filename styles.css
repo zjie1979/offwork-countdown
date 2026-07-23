@@ -213,7 +213,7 @@ h2 {
 .fish-actions {
   flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(3, 44px);
+  grid-template-columns: 60px 52px;
   gap: 6px;
 }
 
@@ -226,6 +226,12 @@ h2 {
   background: rgba(255, 255, 255, 0.74);
   cursor: pointer;
   font-size: 0.9rem;
+}
+
+.fish-actions button.is-running {
+  border-color: rgba(217, 130, 43, 0.72);
+  color: white;
+  background: #d9822b;
 }
 
 .phase-card,
@@ -451,7 +457,7 @@ h2 {
   }
 
   .fish-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .day-options {

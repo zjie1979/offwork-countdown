@@ -37,13 +37,12 @@
 
       <section class="fish-panel" aria-label="摸鱼时间">
         <div class="fish-copy">
-          <p>今日摸鱼额度</p>
-          <strong id="fish-remaining">--分钟</strong>
+          <p>摸鱼正计时</p>
+          <strong id="fish-elapsed">00:00:00</strong>
           <span id="fish-status">先干一会儿，再快乐一下。</span>
         </div>
         <div class="fish-actions">
-          <button type="button" data-fish-add="5">+5</button>
-          <button type="button" data-fish-add="15">+15</button>
+          <button type="button" id="fish-toggle">开始</button>
           <button type="button" id="fish-reset">清零</button>
         </div>
       </section>

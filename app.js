@@ -24,9 +24,9 @@ const els = {
   countdown: document.querySelector("#countdown"),
   targetLine: document.querySelector("#target-line"),
   progressBar: document.querySelector("#progress-bar"),
-  fishRemaining: document.querySelector("#fish-remaining"),
+  fishElapsed: document.querySelector("#fish-elapsed"),
   fishStatus: document.querySelector("#fish-status"),
-  fishAddButtons: document.querySelectorAll("[data-fish-add]"),
+  fishToggle: document.querySelector("#fish-toggle"),
   fishReset: document.querySelector("#fish-reset"),
   noonCard: document.querySelector("#noon-card"),
   eveningCard: document.querySelector("#evening-card"),
@@ -97,14 +97,12 @@ function bindEvents() {
     tick();
   });
 
-  els.fishAddButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      addFishMinutes(Number(button.dataset.fishAdd));
-    });
+  els.fishToggle.addEventListener("click", () => {
+    toggleFishTimer();
   });
 
   els.fishReset.addEventListener("click", () => {
-    setTodayFishMinutes(0);
+    resetTodayFishTimer();
   });
 
   window.addEventListener("beforeunload", () => {
@@ -264,22 +262,30 @@ function renderState(now, state) {
 
 function renderFishPanel(now) {
   const allowance = settings.fishAllowance;
-  const used = getTodayFishMinutes(now);
-  const remaining = Math.max(0, allowance - used);
-  els.fishRemaining.textContent = `${remaining}分钟`;
+  const record = getTodayFishRecord(now);
+  const elapsedSeconds = getFishElapsedSeconds(record, now);
+  const remainingSeconds = allowance * 60 - elapsedSeconds;
+  els.fishElapsed.textContent = formatFishClock(elapsedSeconds);
+  els.fishToggle.textContent = record.startedAt ? "暂停" : "开始";
+  els.fishToggle.classList.toggle("is-running", Boolean(record.startedAt));
+
   if (allowance === 0) {
-    els.fishStatus.textContent = "已关闭摸鱼额度。";
+    els.fishStatus.textContent = record.startedAt ? "正计时中，未设置每日额度。" : "未设置额度，也可以单独计时。";
     return;
   }
-  if (used === 0) {
-    els.fishStatus.textContent = `还没记录，今天可以快乐 ${allowance} 分钟。`;
+
+  if (elapsedSeconds === 0) {
+    els.fishStatus.textContent = `今天额度 ${allowance} 分钟，点开始自动计时。`;
     return;
   }
-  if (used > allowance) {
-    els.fishStatus.textContent = `已记录 ${used} 分钟，超出 ${used - allowance} 分钟。`;
+
+  if (remainingSeconds < 0) {
+    els.fishStatus.textContent = `已超过额度 ${formatCompactSeconds(Math.abs(remainingSeconds))}。`;
     return;
   }
-  els.fishStatus.textContent = `已记录 ${used} 分钟，留着点也挺好。`;
+
+  const prefix = record.startedAt ? "正计时中" : "已暂停";
+  els.fishStatus.textContent = `${prefix}，剩余 ${formatCompactSeconds(remainingSeconds)}。`;
 }
 
 function renderPhaseCards(now, state) {
@@ -375,20 +381,41 @@ function formatActiveDays(activeDays) {
   return ordered.join("、");
 }
 
-function addFishMinutes(minutes) {
-  const today = new Date();
-  const nextValue = getTodayFishMinutes(today) + minutes;
-  setTodayFishMinutes(nextValue, today);
-}
-
-function setTodayFishMinutes(minutes, date = new Date()) {
-  fishRecords[todayKey(date)] = Math.max(0, Math.round(minutes));
+function toggleFishTimer(date = new Date()) {
+  const key = todayKey(date);
+  const record = getTodayFishRecord(date);
+  if (record.startedAt) {
+    record.accumulatedSeconds = getFishElapsedSeconds(record, date);
+    record.startedAt = null;
+  } else {
+    record.startedAt = date.getTime();
+  }
+  fishRecords[key] = record;
   saveFishRecords();
   tick();
 }
 
-function getTodayFishMinutes(date) {
-  return normalizeFishRecordValue(fishRecords[todayKey(date)]);
+function resetTodayFishTimer(date = new Date()) {
+  fishRecords[todayKey(date)] = {
+    accumulatedSeconds: 0,
+    startedAt: null,
+  };
+  saveFishRecords();
+  tick();
+}
+
+function getTodayFishRecord(date) {
+  const key = todayKey(date);
+  const record = normalizeFishRecord(fishRecords[key]);
+  fishRecords[key] = record;
+  return record;
+}
+
+function getFishElapsedSeconds(record, date) {
+  const accumulated = normalizeSeconds(record.accumulatedSeconds);
+  if (!record.startedAt) return accumulated;
+  const sessionSeconds = Math.max(0, Math.floor((date.getTime() - record.startedAt) / 1000));
+  return accumulated + sessionSeconds;
 }
 
 function todayKey(date) {
@@ -412,10 +439,57 @@ function normalizeFishAllowance(value) {
   return Math.max(0, Math.min(240, Math.round(numberValue)));
 }
 
+function normalizeFishRecord(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return {
+      accumulatedSeconds: normalizeSeconds(value.accumulatedSeconds),
+      startedAt: normalizeStartedAt(value.startedAt),
+    };
+  }
+  return {
+    accumulatedSeconds: normalizeFishRecordValue(value) * 60,
+    startedAt: null,
+  };
+}
+
+function normalizeSeconds(value) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return 0;
+  return Math.max(0, Math.round(numberValue));
+}
+
 function normalizeFishRecordValue(value) {
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return 0;
   return Math.max(0, Math.round(numberValue));
+}
+
+function normalizeStartedAt(value) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue <= 0) return null;
+  return numberValue;
+}
+
+function formatFishClock(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+function formatCompactSeconds(totalSeconds) {
+  const safeSeconds = Math.max(0, Math.ceil(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  if (hours > 0) {
+    return `${hours}小时${minutes}分`;
+  }
+  if (minutes > 0) {
+    return seconds > 0 ? `${minutes}分${seconds}秒` : `${minutes}分钟`;
+  }
+  return `${seconds}秒`;
 }
 
 function timeToMinutes(value) {
