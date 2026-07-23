@@ -1,8 +1,9 @@
 const STORAGE_KEY = "offwork-countdown.v1.settings";
 const FISH_STORAGE_KEY = "offwork-countdown.v1.fishRecords";
-const APP_VERSION = "2026.07.23-5";
+const APP_VERSION = "2026.07.23-6";
 
 const DEFAULT_SETTINGS = {
+  leaveTime: "08:50",
   morningStartTime: "09:30",
   noonTime: "12:00",
   afternoonStartTime: "14:00",
@@ -28,6 +29,10 @@ const els = {
   countdown: document.querySelector("#countdown"),
   targetLine: document.querySelector("#target-line"),
   progressBar: document.querySelector("#progress-bar"),
+  leavePanel: document.querySelector("#leave-panel"),
+  leaveCountdown: document.querySelector("#leave-countdown"),
+  leaveStatus: document.querySelector("#leave-status"),
+  leaveTimeLabel: document.querySelector("#leave-time-label"),
   fishElapsed: document.querySelector("#fish-elapsed"),
   fishStatus: document.querySelector("#fish-status"),
   fishToggle: document.querySelector("#fish-toggle"),
@@ -53,6 +58,7 @@ const els = {
   openSettings: document.querySelector("#open-settings"),
   closeSettings: document.querySelector("#close-settings"),
   form: document.querySelector("#settings-form"),
+  leaveInput: document.querySelector("#leave-time"),
   morningStartInput: document.querySelector("#morning-start-time"),
   noonInput: document.querySelector("#noon-time"),
   afternoonStartInput: document.querySelector("#afternoon-start-time"),
@@ -149,6 +155,7 @@ function loadSettings() {
     const parsed = JSON.parse(raw);
     const hasWorkStartTimes = isTime(parsed.morningStartTime) && isTime(parsed.afternoonStartTime);
     return {
+      leaveTime: isTime(parsed.leaveTime) ? parsed.leaveTime : DEFAULT_SETTINGS.leaveTime,
       morningStartTime: hasWorkStartTimes ? parsed.morningStartTime : DEFAULT_SETTINGS.morningStartTime,
       noonTime: isTime(parsed.noonTime) ? parsed.noonTime : DEFAULT_SETTINGS.noonTime,
       afternoonStartTime: hasWorkStartTimes ? parsed.afternoonStartTime : DEFAULT_SETTINGS.afternoonStartTime,
@@ -191,6 +198,7 @@ function renderDayOptions() {
 }
 
 function hydrateSettingsForm() {
+  els.leaveInput.value = settings.leaveTime;
   els.morningStartInput.value = settings.morningStartTime;
   els.noonInput.value = settings.noonTime;
   els.afternoonStartInput.value = settings.afternoonStartTime;
@@ -207,6 +215,7 @@ function readSettingsForm() {
   const checkedDays = [...els.form.querySelectorAll('input[name="activeDays"]:checked')]
     .map((input) => Number(input.value));
   return {
+    leaveTime: els.leaveInput.value,
     morningStartTime: els.morningStartInput.value,
     noonTime: els.noonInput.value,
     afternoonStartTime: els.afternoonStartInput.value,
@@ -217,9 +226,12 @@ function readSettingsForm() {
 }
 
 function validateSettings(candidate) {
-  if (!isTime(candidate.morningStartTime) || !isTime(candidate.noonTime)
+  if (!isTime(candidate.leaveTime) || !isTime(candidate.morningStartTime) || !isTime(candidate.noonTime)
     || !isTime(candidate.afternoonStartTime) || !isTime(candidate.eveningTime)) {
-    return "请填写完整的上班和下班时间。";
+    return "请填写完整的出门、上班和下班时间。";
+  }
+  if (timeToMinutes(candidate.leaveTime) >= timeToMinutes(candidate.morningStartTime)) {
+    return "上班出门时间应早于上午上班时间。";
   }
   if (timeToMinutes(candidate.morningStartTime) >= timeToMinutes(candidate.noonTime)
     || timeToMinutes(candidate.noonTime) >= timeToMinutes(candidate.afternoonStartTime)
@@ -314,6 +326,7 @@ function renderState(now, state) {
   els.stageLabel.textContent = state.label;
   els.countdown.textContent = formatDuration(state.target - now);
   els.targetLine.textContent = formatTargetLine(state.target, state.phase);
+  els.leaveTimeLabel.textContent = settings.leaveTime;
   els.morningStartTimeLabel.textContent = settings.morningStartTime;
   els.noonTimeLabel.textContent = settings.noonTime;
   els.afternoonStartTimeLabel.textContent = settings.afternoonStartTime;
@@ -321,9 +334,39 @@ function renderState(now, state) {
   els.activeDaysLabel.textContent = formatActiveDays(settings.activeDays);
   els.nextTargetLabel.textContent = getPhaseLabel(state.phase);
 
+  renderLeavePanel(now);
   renderFishPanel(now);
   renderPhaseCards(now, state);
   renderProgress(now, state);
+}
+
+function renderLeavePanel(now) {
+  const activeToday = settings.activeDays.includes(now.getDay());
+  const leaveToday = dateAtTime(now, settings.leaveTime);
+  const morningStart = dateAtTime(now, settings.morningStartTime);
+  const beforeLeave = activeToday && now < leaveToday;
+  const overdue = activeToday && now >= leaveToday && now < morningStart;
+  const nextLeave = beforeLeave || overdue
+    ? leaveToday
+    : findCurrentOrNextActiveDateAtTime(now, settings.leaveTime, settings.activeDays);
+
+  els.leavePanel.classList.toggle("is-soon", beforeLeave && nextLeave - now <= 10 * 60000);
+  els.leavePanel.classList.toggle("is-late", overdue);
+
+  if (beforeLeave) {
+    els.leaveCountdown.textContent = formatDuration(nextLeave - now);
+    els.leaveStatus.textContent = `${formatLeaveTargetLine(nextLeave, now)} 必须出门，否则容易迟到。`;
+    return;
+  }
+
+  if (overdue) {
+    els.leaveCountdown.textContent = `+${formatDuration(now - nextLeave)}`;
+    els.leaveStatus.textContent = `已经超过 ${formatCompactSeconds(Math.floor((now - nextLeave) / 1000))}，现在出门更稳。`;
+    return;
+  }
+
+  els.leaveCountdown.textContent = formatDuration(nextLeave - now);
+  els.leaveStatus.textContent = `下次 ${formatLeaveTargetLine(nextLeave, now)} 出门。`;
 }
 
 function renderFishPanel(now) {
@@ -508,6 +551,20 @@ function findNextActiveDateAtTime(now, timeValue, activeDays) {
   return dateAtTime(now, timeValue);
 }
 
+function findCurrentOrNextActiveDateAtTime(now, timeValue, activeDays) {
+  for (let offset = 0; offset <= 8; offset += 1) {
+    const candidate = new Date(now);
+    candidate.setDate(candidate.getDate() + offset);
+    if (activeDays.includes(candidate.getDay())) {
+      const target = dateAtTime(candidate, timeValue);
+      if (target > now) {
+        return target;
+      }
+    }
+  }
+  return dateAtTime(now, timeValue);
+}
+
 function formatDuration(ms) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -533,6 +590,15 @@ function formatTargetLine(target, phase) {
   }).format(target);
   const label = getPhaseLabel(phase);
   return `${dayText} ${formatClock(target)} ${label}`;
+}
+
+function formatLeaveTargetLine(target, now = new Date()) {
+  const dayText = isSameDate(target, now) ? "今天" : new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(target);
+  return `${dayText} ${formatClock(target)}`;
 }
 
 function getPhaseLabel(phase) {

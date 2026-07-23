@@ -1,7 +1,7 @@
 {
   "name": "下班倒计时",
   "short_name": "下班倒计时",
-  "description": "中午和下午两段下班倒计时。",
+  "description": "出门、上班、下班和摸鱼正计时。",
   "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
