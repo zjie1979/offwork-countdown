@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#667eea">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>下班倒计时</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    :root{
+      --pink:#ff6b9d;--purple:#c44dff;--blue:#667eea;
+      --bg-from:#667eea;--bg-to:#f093fb;
+      --card:rgba(255,255,255,.88);--card-hover:rgba(255,255,255,.95);
+      --text:#2d3436;--text2:#636e72;
+      --success:#00b894;--warn:#fdcb6e;--danger:#e17055;
+      --radius:20px;--shadow:0 8px 32px rgba(0,0,0,.08);
+    }
+    html,body{height:100%;overflow:hidden}
+    body{
+      font-family:-apple-system,"PingFang SC","Helvetica Neue","Microsoft YaHei",sans-serif;
+      background:linear-gradient(135deg,var(--bg-from) 0%,var(--bg-to) 100%);
+      background-attachment:fixed;color:var(--text);
+      display:flex;justify-content:center;
+      -webkit-font-smoothing:antialiased;
+    }
+    .app{
+      width:100%;max-width:420px;min-height:100vh;min-height:100dvh;
+      padding:env(safe-area-inset-top,20px) 16px env(safe-area-inset-bottom,20px);
+      display:flex;flex-direction:column;gap:14px;
+      overflow-y:auto;-webkit-overflow-scrolling:touch;
+    }
+    /* Header */
+    .header{text-align:center;padding:16px 0 4px;color:#fff}
+    .header h1{font-size:26px;font-weight:800;text-shadow:0 2px 8px rgba(0,0,0,.12)}
+    .header .date{font-size:13px;opacity:.85;margin-top:4px}
+    .clock{font-size:42px;font-weight:200;letter-spacing:2px;text-shadow:0 2px 12px rgba(0,0,0,.15);margin:4px 0 0;font-variant-numeric:tabular-nums}
+    /* Cards */
+    .card{
+      background:var(--card);border-radius:var(--radius);
+      padding:20px;box-shadow:var(--shadow);
+      backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+      transition:transform .2s,box-shadow .2s;
+    }
+    .card:active{transform:scale(.98)}
+    .card-title{font-size:14px;font-weight:700;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    /* Status */
+    .status{text-align:center;padding:24px 20px}
+    .status .emoji{font-size:48px;margin-bottom:8px;display:block;animation:bounce 2s ease infinite}
+    .status .state-text{font-size:20px;font-weight:700;margin-bottom:2px}
+    .status .next-label{font-size:13px;color:var(--text2)}
+    .countdown-row{display:flex;justify-content:center;gap:12px;margin-top:16px}
+    .cd-unit{display:flex;flex-direction:column;align-items:center}
+    .cd-num{
+      font-size:48px;font-weight:800;line-height:1;
+      background:linear-gradient(135deg,var(--pink),var(--purple));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      font-variant-numeric:tabular-nums;min-width:60px;
+    }
+    .cd-label{font-size:11px;color:var(--text2);margin-top:2px}
+    .cd-sep{font-size:36px;font-weight:300;color:#ddd;line-height:1;padding-top:4px}
+    /* Progress */
+    .progress-wrap{margin-top:16px}
+    .progress-bar{height:10px;background:rgba(0,0,0,.06);border-radius:5px;overflow:hidden}
+    .progress-fill{height:100%;border-radius:5px;transition:width 1s linear;background:linear-gradient(90deg,var(--blue),var(--pink))}
+    .progress-text{font-size:12px;color:var(--text2);margin-top:6px;text-align:center}
+    /* Schedule */
+    .schedule{padding:16px 20px}
+    .sched-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .sched-item{
+      background:rgba(102,126,234,.08);border-radius:14px;padding:12px;text-align:center;
+      border:2px solid transparent;transition:border-color .3s;
+    }
+    .sched-item.active{border-color:var(--blue);background:rgba(102,126,234,.15)}
+    .sched-item .label{font-size:12px;color:var(--text2)}
+    .sched-item .time{font-size:18px;font-weight:700;margin-top:2px}
+    /* Slacking */
+    .slacking{padding:20px;text-align:center}
+    .fish-tank{
+      height:60px;position:relative;overflow:hidden;
+      background:linear-gradient(180deg,#e0f7fa,#b2ebf2);
+      border-radius:14px;margin-bottom:14px;
+    }
+    .fish{
+      position:absolute;top:50%;transform:translateY(-50%);
+      font-size:28px;transition:left 3s ease-in-out;
+    }
+    .fish.swimming{animation:swim 3s ease-in-out infinite}
+    @keyframes swim{
+      0%{left:10%;transform:translateY(-50%) scaleX(1)}
+      45%{left:75%;transform:translateY(-50%) scaleX(1)}
+      50%{left:75%;transform:translateY(-50%) scaleX(-1)}
+      95%{left:10%;transform:translateY(-50%) scaleX(-1)}
+      100%{left:10%;transform:translateY(-50%) scaleX(1)}
+    }
+    .bubbles{position:absolute;bottom:0;left:0;right:0;height:100%}
+    .bubble{
+      position:absolute;bottom:-10px;width:6px;height:6px;
+      background:rgba(255,255,255,.6);border-radius:50%;
+      animation:rise 2s ease-in infinite;
+    }
+    .bubble:nth-child(2){left:30%;animation-delay:.5s;width:4px;height:4px}
+    .bubble:nth-child(3){left:60%;animation-delay:1s;width:8px;height:8px}
+    .bubble:nth-child(4){left:80%;animation-delay:1.5s}
+    @keyframes rise{0%{bottom:-10px;opacity:.8}100%{bottom:110%;opacity:0}}
+    .slk-btn{
+      display:inline-flex;align-items:center;gap:8px;
+      padding:14px 36px;border:none;border-radius:50px;
+      font-size:17px;font-weight:700;cursor:pointer;
+      transition:all .25s;box-shadow:0 4px 15px rgba(0,0,0,.12);
+    }
+    .slk-btn.start{background:linear-gradient(135deg,#43e97b,#38f9d7);color:#fff}
+    .slk-btn.stop{background:linear-gradient(135deg,#fa709a,#fee140);color:#fff;animation:pulse 1.5s ease infinite}
+    .slk-btn:active{transform:scale(.95)}
+    .slk-timer{font-size:36px;font-weight:800;color:var(--pink);margin:10px 0;font-variant-numeric:tabular-nums}
+    .slk-total{font-size:13px;color:var(--text2);margin-top:8px}
+    .slk-total span{font-weight:700;color:var(--purple)}
+    /* Quote */
+    .quote{
+      text-align:center;padding:16px 20px;
+      background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(255,255,255,.5));
+    }
+    .quote p{font-size:15px;line-height:1.6;color:var(--text)}
+    /* Footer */
+    .footer{text-align:center;padding:8px 0 16px;color:rgba(255,255,255,.6);font-size:11px}
+    /* Weekend */
+    .weekend-mode{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:12px;color:#fff;text-align:center;padding:40px 20px}
+    .weekend-mode .big-emoji{font-size:72px;animation:bounce 2s ease infinite}
+    .weekend-mode h2{font-size:28px;font-weight:800}
+    .weekend-mode p{font-size:16px;opacity:.85}
+    /* Animations */
+    @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .card{animation:fadeIn .4s ease both}
+    .card:nth-child(2){animation-delay:.1s}
+    .card:nth-child(3){animation-delay:.2s}
+    .card:nth-child(4){animation-delay:.3s}
+    /* Dark mode text for countdown in non-gradient fallback */
+    @supports not (-webkit-background-clip:text){.cd-num{color:var(--pink)}}
+    /* Offline banner */
+    .offline-banner{
+      background:#fdcb6e;color:#2d3436;text-align:center;
+      padding:6px;font-size:12px;border-radius:8px;display:none;
+    }
+    .offline-banner.show{display:block}
+    /* Wake Lock Toggle */
+    .wakelock-toggle{
+      position:fixed;top:env(safe-area-inset-top,12px);right:12px;z-index:100;
+      display:flex;align-items:center;gap:6px;
+      padding:8px 14px;border:none;border-radius:50px;
+      font-size:13px;font-weight:600;cursor:pointer;
+      background:rgba(255,255,255,.25);color:#fff;
+      backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+      transition:all .3s;box-shadow:0 2px 12px rgba(0,0,0,.1);
+      margin-top:8px;
+    }
+    .wakelock-toggle:active{transform:scale(.93)}
+    .wakelock-toggle.active{
+      background:rgba(255,255,255,.85);color:var(--purple);
+      box-shadow:0 2px 16px rgba(196,77,255,.25);
+    }
+    .wakelock-toggle .wl-icon{font-size:16px;transition:transform .3s}
+    .wakelock-toggle.active .wl-icon{animation:glow 2s ease-in-out infinite}
+    .wakelock-toggle.unsupported{opacity:.4;pointer-events:none}
+    @keyframes glow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3)}}
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <!-- Wake Lock Toggle -->
+  <button class="wakelock-toggle" id="wakelockBtn" onclick="toggleWakeLock()">
+    <span class="wl-icon">💡</span>
+    <span id="wlText">常亮</span>
+  </button>
+
+  <!-- Offline banner -->
+  <div class="offline-banner" id="offlineBanner">📡 离线模式 · 功能照常使用</div>
+
+  <!-- Header -->
+  <div class="header">
+    <h1>🎒 下班倒计时</h1>
+    <div class="date" id="dateStr"></div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <!-- Weekend view -->
+  <div id="weekendView" class="weekend-mode" style="display:none">
+    <div class="big-emoji">🎉</div>
+    <h2>周末快乐！</h2>
+    <p>今天不用上班，好好享受吧～</p>
+    <p style="font-size:13px;opacity:.6;margin-top:20px">周一早上 9:30 再见 🤗</p>
+  </div>
+
+  <!-- Weekday content -->
+  <div id="weekdayContent">
+    <!-- Status card -->
+    <div class="card status" id="statusCard">
+      <span class="emoji" id="statusEmoji">☀️</span>
+      <div class="state-text" id="stateText">加载中...</div>
+      <div class="next-label" id="nextLabel"></div>
+      <div class="countdown-row" id="countdownRow">
+        <div class="cd-unit"><span class="cd-num" id="cdH">00</span><span class="cd-label">时</span></div>
+        <span class="cd-sep">:</span>
+        <div class="cd-unit"><span class="cd-num" id="cdM">00</span><span class="cd-label">分</span></div>
+        <span class="cd-sep">:</span>
+        <div class="cd-unit"><span class="cd-num" id="cdS">00</span><span class="cd-label">秒</span></div>
+      </div>
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-text" id="progressText">已完成 0%</div>
+      </div>
+    </div>
+
+    <!-- Schedule card -->
+    <div class="card schedule">
+      <div class="card-title">📅 今日日程</div>
+      <div class="sched-grid">
+        <div class="sched-item" id="sched1"><div class="label">🌅 上午上班</div><div class="time">9:30</div></div>
+        <div class="sched-item" id="sched2"><div class="label">🍚 中午下班</div><div class="time">12:00</div></div>
+        <div class="sched-item" id="sched3"><div class="label">☀️ 下午上班</div><div class="time">14:00</div></div>
+        <div class="sched-item" id="sched4"><div class="label">🏠 下午下班</div><div class="time">17:30</div></div>
+      </div>
+    </div>
+
+    <!-- Slacking card -->
+    <div class="card slacking">
+      <div class="card-title">🐟 摸鱼计时器</div>
+      <div class="fish-tank" id="fishTank">
+        <div class="fish" id="fish">🐟</div>
+        <div class="bubbles"><div class="bubble" style="left:15%"></div><div class="bubble"></div><div class="bubble"></div><div class="bubble"></div></div>
+      </div>
+      <div class="slk-timer" id="slkTimer">00:00</div>
+      <button class="slk-btn start" id="slkBtn" onclick="toggleSlacking()">
+        <span id="slkBtnIcon">🎣</span>
+        <span id="slkBtnText">开始摸鱼</span>
+      </button>
+      <div class="slk-total">今日累计摸鱼：<span id="slkTotal">0 分钟</span></div>
+    </div>
+  </div>
+
+  <!-- Quote -->
+  <div class="card quote" id="quoteCard">
+    <p id="quoteText">✨ 新的一天，元气满满！</p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>💕 快乐上班，准时下班</p>
+  </div>
+</div>
+
+<script>
+// ===== Config =====
+const SCHEDULE = {
+  morning:  { start: [9,30], end: [12,0] },
+  afternoon:{ start: [14,0], end: [17,30] }
+};
+
+// ===== State =====
+let slacking = false;
+let slkStart = 0;
+let slkAccum = 0;   // accumulated seconds today
+let slkInterval = null;
+const today = new Date().toDateString();
+
+// Restore today's slacking from memory
+try {
+  const saved = JSON.parse(localStorage.getItem('offwork_slk') || '{}');
+  if (saved.date === today) slkAccum = saved.accum || 0;
+} catch(e) {}
+
+// ===== Time Helpers =====
+function makeTime(h, m) {
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+function diffSec(from, to) {
+  return Math.max(0, Math.floor((to - from) / 1000));
+}
+function pad(n) { return String(n).padStart(2, '0'); }
+
+// ===== Get current state =====
+function getState(now) {
+  const day = now.getDay();
+  if (day === 0 || day === 6) return { type: 'weekend' };
+
+  const t = now.getTime();
+  const mStart = makeTime(...SCHEDULE.morning.start);
+  const mEnd   = makeTime(...SCHEDULE.morning.end);
+  const aStart = makeTime(...SCHEDULE.afternoon.start);
+  const aEnd   = makeTime(...SCHEDULE.afternoon.end);
+
+  if (t < mStart.getTime()) {
+    const total = diffSec(makeTime(0,0), mStart);
+    const elapsed = diffSec(makeTime(0,0), now);
+    return { type: 'before_work', target: mStart, label: '上午下班 (12:00)', emoji: '🌅', phrase: '早安！新的一天开始啦', progress: Math.min(100, Math.round(elapsed/total*100)) };
+  }
+  if (t >= mStart.getTime() && t < mEnd.getTime()) {
+    const total = diffSec(mStart, mEnd);
+    const elapsed = diffSec(mStart, now);
+    return { type: 'morning_work', target: mEnd, label: '中午下班 (12:00)', emoji: '💪', phrase: '上午冲冲冲！', progress: Math.round(elapsed/total*100) };
+  }
+  if (t >= mEnd.getTime() && t < aStart.getTime()) {
+    const total = diffSec(mEnd, aStart);
+    const elapsed = diffSec(mEnd, now);
+    return { type: 'lunch_break', target: aStart, label: '下午上班 (14:00)', emoji: '🍚', phrase: '午饭时间，好好休息～', progress: Math.round(elapsed/total*100) };
+  }
+  if (t >= aStart.getTime() && t < aEnd.getTime()) {
+    const total = diffSec(aStart, aEnd);
+    const elapsed = diffSec(aStart, now);
+    return { type: 'afternoon_work', target: aEnd, label: '下午下班 (17:30)', emoji: '☕', phrase: '下午加油，胜利在望！', progress: Math.round(elapsed/total*100) };
+  }
+  return { type: 'off_work', emoji: '🎉', phrase: '下班啦！今天的班就到这里～' };
+}
+
+// ===== Quotes =====
+const QUOTES = {
+  before_work: [
+    '☕ 来杯咖啡，准备开启元气满满的一天！',
+    '🌈 早安！今天也要做最靓的仔～',
+    '🎵 听着歌去上班，心情美美的～',
+  ],
+  morning_work: [
+    '💪 上午冲冲冲！离午饭又近了一步～',
+    '🔥 认真工作的你最迷人！',
+    '⏰ 时间过得很快的，专注就不觉得了～',
+  ],
+  lunch_break: [
+    '🍜 干饭人干饭魂！吃饱了下午更有力气～',
+    '😴 午休是最好的充电！',
+    '🎮 趁着午休，做点让自己开心的事吧～',
+  ],
+  afternoon_work: [
+    '☕ 来杯下午茶，续命神器！',
+    '🏃 最后冲刺！马上就自由了～',
+    '🌟 下午的你也很棒，再坚持一下下！',
+  ],
+  off_work: [
+    '🎉 下班啦！今天的你辛苦啦～',
+    '🏠 回家路上注意安全，今晚做点喜欢的事！',
+    '🍻 辛苦一天，奖励自己一下吧！',
+  ],
+  weekend: [
+    '🎊 周末不积极，脑袋有问题！好好玩～',
+    '🛋️ 窝在家里也是一种幸福～',
+    '🌳 出去走走吧，大自然在等你！',
+  ],
+};
+function randomQuote(type) {
+  const arr = QUOTES[type] || QUOTES.before_work;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// ===== Render =====
+const $ = id => document.getElementById(id);
+
+function updateClock() {
+  const now = new Date();
+  $('clock').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes()) + ':' + pad(now.getSeconds());
+
+  const weekNames = ['日','一','二','三','四','五','六'];
+  $('dateStr').textContent = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 星期${weekNames[now.getDay()]}`;
+}
+
+let lastQuoteType = '';
+function updateUI() {
+  const now = new Date();
+  const state = getState(now);
+
+  updateClock();
+
+  // Weekend
+  if (state.type === 'weekend') {
+    $('weekendView').style.display = 'flex';
+    $('weekdayContent').style.display = 'none';
+    if (lastQuoteType !== 'weekend') {
+      $('quoteText').textContent = randomQuote('weekend');
+      lastQuoteType = 'weekend';
+    }
+    return;
+  }
+  $('weekendView').style.display = 'none';
+  $('weekdayContent').style.display = 'block';
+
+  // Status
+  $('statusEmoji').textContent = state.emoji;
+  if (state.type === 'off_work') {
+    $('stateText').textContent = '已下班 🏠';
+    $('nextLabel').textContent = '明天见，好好休息～';
+    $('countdownRow').style.display = 'none';
+    $('progressWrap').style.display = 'none';
+    // Reset slacking if just got off work
+    if (slacking) toggleSlacking();
+    slkAccum = 0;
+    saveSlkAccum();
+  } else {
+    $('stateText').textContent = state.phrase;
+    $('nextLabel').textContent = '距离 ' + state.label;
+    $('countdownRow').style.display = 'flex';
+    $('progressWrap').style.display = 'block';
+
+    const sec = diffSec(now, state.target);
+    $('cdH').textContent = pad(Math.floor(sec / 3600));
+    $('cdM').textContent = pad(Math.floor((sec % 3600) / 60));
+    $('cdS').textContent = pad(sec % 60);
+
+    $('progressFill').style.width = state.progress + '%';
+    $('progressText').textContent = `今日进度 ${state.progress}%`;
+  }
+
+  // Schedule highlight
+  ['sched1','sched2','sched3','sched4'].forEach(id => $(id).classList.remove('active'));
+  if (state.type === 'before_work') $('sched1').classList.add('active');
+  else if (state.type === 'morning_work') $('sched2').classList.add('active');
+  else if (state.type === 'lunch_break') $('sched3').classList.add('active');
+  else if (state.type === 'afternoon_work') $('sched4').classList.add('active');
+
+  // Quote
+  if (lastQuoteType !== state.type) {
+    $('quoteText').textContent = randomQuote(state.type);
+    lastQuoteType = state.type;
+  }
+
+  // Slacking total display
+  $('slkTotal').innerHTML = formatSlkTotal(slkAccum + (slacking ? Math.floor((Date.now() - slkStart)/1000) : 0));
+}
+
+// ===== Slacking Timer =====
+function toggleSlacking() {
+  const btn = $('slkBtn');
+  const fish = $('fish');
+
+  if (!slacking) {
+    // Start
+    slacking = true;
+    slkStart = Date.now();
+    btn.className = 'slk-btn stop';
+    $('slkBtnIcon').textContent = '⏸';
+    $('slkBtnText').textContent = '停止摸鱼';
+    fish.classList.add('swimming');
+    slkInterval = setInterval(updateSlkDisplay, 1000);
+  } else {
+    // Stop
+    slacking = false;
+    const elapsed = Math.floor((Date.now() - slkStart) / 1000);
+    slkAccum += elapsed;
+    saveSlkAccum();
+    btn.className = 'slk-btn start';
+    $('slkBtnIcon').textContent = '🎣';
+    $('slkBtnText').textContent = '开始摸鱼';
+    fish.classList.remove('swimming');
+    clearInterval(slkInterval);
+    updateSlkDisplay();
+  }
+}
+
+function updateSlkDisplay() {
+  const current = slacking ? Math.floor((Date.now() - slkStart) / 1000) : 0;
+  const mins = Math.floor(current / 60);
+  const secs = current % 60;
+  $('slkTimer').textContent = pad(mins) + ':' + pad(secs);
+  $('slkTotal').innerHTML = formatSlkTotal(slkAccum + current);
+}
+
+function formatSlkTotal(totalSec) {
+  const m = Math.floor(totalSec / 60);
+  if (m < 1) return `${totalSec} 秒`;
+  if (m < 60) return `<span>${m}</span> 分钟`;
+  const h = Math.floor(m / 60);
+  const rm = m % 60;
+  return `<span>${h}时${rm}分</span>`;
+}
+
+function saveSlkAccum() {
+  try {
+    localStorage.setItem('offwork_slk', JSON.stringify({ date: new Date().toDateString(), accum: slkAccum }));
+  } catch(e) {}
+}
+
+// ===== Screen Wake Lock =====
+let wakeLock = null;
+let wakeLockEnabled = false;
+
+async function requestWakeLock() {
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLockEnabled = true;
+    $('wakelockBtn').classList.add('active');
+    $('wlText').textContent = '常亮中';
+    wakeLock.addEventListener('release', () => {
+      // System released the lock (e.g. tab hidden, low battery)
+      if (wakeLockEnabled) {
+        // User still wants it on — will re-acquire on visibility change
+        wakeLock = null;
+      }
+    });
+  } catch(e) {
+    // Failed (low battery, not allowed, etc.)
+    wakeLockEnabled = false;
+    $('wakelockBtn').classList.remove('active');
+    $('wlText').textContent = '常亮';
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock) {
+    wakeLock.release();
+    wakeLock = null;
+  }
+  wakeLockEnabled = false;
+  $('wakelockBtn').classList.remove('active');
+  $('wlText').textContent = '常亮';
+}
+
+async function toggleWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  if (wakeLockEnabled) {
+    releaseWakeLock();
+  } else {
+    await requestWakeLock();
+  }
+}
+
+// Re-acquire wake lock when page becomes visible again
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && wakeLockEnabled && !wakeLock) {
+    await requestWakeLock();
+  }
+});
+
+// ===== Init =====
+function init() {
+  updateUI();
+  setInterval(updateUI, 1000);
+
+  // Online/Offline detection
+  window.addEventListener('online', () => $('offlineBanner').classList.remove('show'));
+  window.addEventListener('offline', () => $('offlineBanner').classList.add('show'));
+  if (!navigator.onLine) $('offlineBanner').classList.add('show');
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // Check wake lock support
+  if (!('wakeLock' in navigator)) {
+    $('wakelockBtn').classList.add('unsupported');
+    $('wlText').textContent = '不支持';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
