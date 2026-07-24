@@ -1,6 +1,8 @@
 const STORAGE_KEY = "offwork-countdown.v1.settings";
 const FISH_STORAGE_KEY = "offwork-countdown.v1.fishRecords";
-const APP_VERSION = "2026.07.24-7";
+const APP_VERSION = "2026.07.24-9";
+const WAKE_UP_COUNTDOWN_START_TIME = "22:00";
+const LEAVE_COUNTDOWN_START_TIME = "07:00";
 
 const DEFAULT_SETTINGS = {
   wakeUpTime: "07:30",
@@ -59,9 +61,9 @@ const els = {
   eveningStatus: document.querySelector("#evening-status"),
   activeDaysLabel: document.querySelector("#active-days-label"),
   nextTargetLabel: document.querySelector("#next-target-label"),
-  dialog: document.querySelector("#settings-dialog"),
+  pageViews: document.querySelectorAll(".page-view"),
+  tabButtons: document.querySelectorAll(".tab-button"),
   openSettings: document.querySelector("#open-settings"),
-  closeSettings: document.querySelector("#close-settings"),
   form: document.querySelector("#settings-form"),
   wakeUpInput: document.querySelector("#wake-up-time"),
   leaveInput: document.querySelector("#leave-time"),
@@ -98,13 +100,17 @@ function init() {
 function bindEvents() {
   els.openSettings.addEventListener("click", () => {
     hydrateSettingsForm();
-    els.dialog.showModal();
+    setActivePage("settings");
   });
 
-  els.dialog.addEventListener("click", (event) => {
-    if (event.target === els.dialog) {
-      els.dialog.close();
-    }
+  els.tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextPage = button.dataset.pageTarget;
+      if (nextPage === "settings") {
+        hydrateSettingsForm();
+      }
+      setActivePage(nextPage);
+    });
   });
 
   els.form.addEventListener("submit", (event) => {
@@ -118,8 +124,8 @@ function bindEvents() {
     settings = nextSettings;
     saveSettings(settings);
     els.formError.textContent = "";
-    els.dialog.close();
     tick();
+    setActivePage("countdown");
   });
 
   els.resetSettings.addEventListener("click", () => {
@@ -151,6 +157,18 @@ function bindEvents() {
     if (timerId) {
       window.clearInterval(timerId);
     }
+  });
+}
+
+function setActivePage(pageName) {
+  const targetPage = pageName || "countdown";
+  els.pageViews.forEach((page) => {
+    page.classList.toggle("is-active", page.dataset.page === targetPage);
+  });
+  els.tabButtons.forEach((button) => {
+    const isActive = button.dataset.pageTarget === targetPage;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
   });
 }
 
@@ -245,6 +263,9 @@ function validateSettings(candidate) {
   }
   if (timeToMinutes(candidate.leaveTime) >= timeToMinutes(candidate.morningStartTime)) {
     return "上班出门时间应早于上午上班时间。";
+  }
+  if (timeToMinutes(candidate.leaveTime) <= timeToMinutes(LEAVE_COUNTDOWN_START_TIME)) {
+    return "上班出门时间应晚于 07:00。";
   }
   if (timeToMinutes(candidate.morningStartTime) >= timeToMinutes(candidate.noonTime)
     || timeToMinutes(candidate.noonTime) >= timeToMinutes(candidate.afternoonStartTime)
@@ -356,61 +377,49 @@ function renderState(now, state) {
 }
 
 function renderWakeUpPanel(now) {
-  const activeToday = settings.activeDays.includes(now.getDay());
-  const wakeUpToday = dateAtTime(now, settings.wakeUpTime);
-  const leaveToday = dateAtTime(now, settings.leaveTime);
-  const beforeWakeUp = activeToday && now < wakeUpToday;
-  const overdue = activeToday && now >= wakeUpToday && now < leaveToday;
-  const nextWakeUp = beforeWakeUp || overdue
-    ? wakeUpToday
-    : findCurrentOrNextActiveDateAtTime(now, settings.wakeUpTime, settings.activeDays);
+  const windowState = findNextRoutineWindow(
+    now,
+    settings.wakeUpTime,
+    settings.activeDays,
+    -1,
+    WAKE_UP_COUNTDOWN_START_TIME
+  );
+  const isCounting = now >= windowState.start && now < windowState.target;
 
-  els.wakeUpPanel.classList.toggle("is-soon", beforeWakeUp && nextWakeUp - now <= 10 * 60000);
-  els.wakeUpPanel.classList.toggle("is-late", overdue);
+  els.wakeUpPanel.classList.toggle("is-soon", isCounting && windowState.target - now <= 10 * 60000);
+  els.wakeUpPanel.classList.toggle("is-late", false);
 
-  if (beforeWakeUp) {
-    els.wakeUpCountdown.textContent = formatDuration(nextWakeUp - now);
-    els.wakeUpStatus.textContent = `${formatRoutineTargetLine(nextWakeUp, now)} 起床，准备 ${settings.leaveTime} 出门。`;
+  if (isCounting) {
+    els.wakeUpCountdown.textContent = formatDuration(windowState.target - now);
+    els.wakeUpStatus.textContent = `${formatRoutineTargetLine(windowState.target, now)} 起床，到点后停止。`;
     return;
   }
 
-  if (overdue) {
-    els.wakeUpCountdown.textContent = `+${formatDuration(now - nextWakeUp)}`;
-    els.wakeUpStatus.textContent = `已经超过 ${formatCompactSeconds(Math.floor((now - nextWakeUp) / 1000))}，起床准备出门。`;
-    return;
-  }
-
-  els.wakeUpCountdown.textContent = formatDuration(nextWakeUp - now);
-  els.wakeUpStatus.textContent = `下次 ${formatRoutineTargetLine(nextWakeUp, now)} 起床。`;
+  els.wakeUpCountdown.textContent = "已停止";
+  els.wakeUpStatus.textContent = `${formatRoutineTargetLine(windowState.start, now)} 开始，目标 ${formatRoutineTargetLine(windowState.target, now)} 起床。`;
 }
 
 function renderLeavePanel(now) {
-  const activeToday = settings.activeDays.includes(now.getDay());
-  const leaveToday = dateAtTime(now, settings.leaveTime);
-  const morningStart = dateAtTime(now, settings.morningStartTime);
-  const beforeLeave = activeToday && now < leaveToday;
-  const overdue = activeToday && now >= leaveToday && now < morningStart;
-  const nextLeave = beforeLeave || overdue
-    ? leaveToday
-    : findCurrentOrNextActiveDateAtTime(now, settings.leaveTime, settings.activeDays);
+  const windowState = findNextRoutineWindow(
+    now,
+    settings.leaveTime,
+    settings.activeDays,
+    0,
+    LEAVE_COUNTDOWN_START_TIME
+  );
+  const isCounting = now >= windowState.start && now < windowState.target;
 
-  els.leavePanel.classList.toggle("is-soon", beforeLeave && nextLeave - now <= 10 * 60000);
-  els.leavePanel.classList.toggle("is-late", overdue);
+  els.leavePanel.classList.toggle("is-soon", isCounting && windowState.target - now <= 10 * 60000);
+  els.leavePanel.classList.toggle("is-late", false);
 
-  if (beforeLeave) {
-    els.leaveCountdown.textContent = formatDuration(nextLeave - now);
-    els.leaveStatus.textContent = `${formatRoutineTargetLine(nextLeave, now)} 必须出门，否则容易迟到。`;
+  if (isCounting) {
+    els.leaveCountdown.textContent = formatDuration(windowState.target - now);
+    els.leaveStatus.textContent = `${formatRoutineTargetLine(windowState.target, now)} 必须出门，到点后停止。`;
     return;
   }
 
-  if (overdue) {
-    els.leaveCountdown.textContent = `+${formatDuration(now - nextLeave)}`;
-    els.leaveStatus.textContent = `已经超过 ${formatCompactSeconds(Math.floor((now - nextLeave) / 1000))}，现在出门更稳。`;
-    return;
-  }
-
-  els.leaveCountdown.textContent = formatDuration(nextLeave - now);
-  els.leaveStatus.textContent = `下次 ${formatRoutineTargetLine(nextLeave, now)} 出门。`;
+  els.leaveCountdown.textContent = "已停止";
+  els.leaveStatus.textContent = `${formatRoutineTargetLine(windowState.start, now)} 开始，目标 ${formatRoutineTargetLine(windowState.target, now)} 出门。`;
 }
 
 function renderFishPanel(now) {
@@ -607,6 +616,26 @@ function findCurrentOrNextActiveDateAtTime(now, timeValue, activeDays) {
     }
   }
   return dateAtTime(now, timeValue);
+}
+
+function findNextRoutineWindow(now, targetTime, activeDays, startDayOffset, startTime) {
+  for (let offset = 0; offset <= 14; offset += 1) {
+    const targetBase = new Date(now);
+    targetBase.setDate(targetBase.getDate() + offset);
+    if (!activeDays.includes(targetBase.getDay())) continue;
+
+    const target = dateAtTime(targetBase, targetTime);
+    const startBase = new Date(targetBase);
+    startBase.setDate(startBase.getDate() + startDayOffset);
+    const start = dateAtTime(startBase, startTime);
+
+    if (now < target) {
+      return { start, target };
+    }
+  }
+
+  const fallbackTarget = dateAtTime(now, targetTime);
+  return { start: dateAtTime(now, startTime), target: fallbackTarget };
 }
 
 function formatDuration(ms) {

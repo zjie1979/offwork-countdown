@@ -12,7 +12,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
     <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
-    <link rel="stylesheet" href="./styles.css?v=20260724-7">
+    <link rel="stylesheet" href="./styles.css?v=20260724-9">
   </head>
   <body>
     <main class="app-shell">
@@ -20,120 +20,120 @@
         <div>
           <p class="eyebrow" id="today-label">今天</p>
           <h1>下班倒计时</h1>
-          <p class="version-label" id="version-label">版本 2026.07.24-7</p>
+          <p class="version-label" id="version-label">版本 2026.07.24-9</p>
         </div>
         <button class="icon-button" id="open-settings" type="button" aria-label="打开设置">
           <span aria-hidden="true">⋯</span>
         </button>
       </section>
 
-      <section class="hero-panel" aria-live="polite">
-        <p class="stage-label" id="stage-label">正在计算</p>
-        <div class="countdown" id="countdown">--:--:--</div>
-        <p class="target-line" id="target-line">读取本机时间</p>
-        <div class="progress-track" aria-hidden="true">
-          <span id="progress-bar"></span>
-        </div>
-      </section>
-
-      <section class="wake-up-panel" id="wake-up-panel" aria-label="起床倒计时" aria-live="polite">
-        <div class="wake-up-copy">
-          <p>起床倒计时</p>
-          <strong id="wake-up-countdown">--:--:--</strong>
-          <span id="wake-up-status">周一至周五 07:30 起床。</span>
-        </div>
-        <div class="wake-up-time">
-          <span>起床</span>
-          <strong id="wake-up-time-label">07:30</strong>
-        </div>
-      </section>
-
-      <section class="leave-panel" id="leave-panel" aria-label="上班出门倒计时" aria-live="polite">
-        <div class="leave-copy">
-          <p>上班出门倒计时</p>
-          <strong id="leave-countdown">--:--:--</strong>
-          <span id="leave-status">周一至周五 08:50 必须出门。</span>
-        </div>
-        <div class="leave-time">
-          <span>必须出门</span>
-          <strong id="leave-time-label">08:50</strong>
-        </div>
-      </section>
-
-      <section class="fish-panel" aria-label="摸鱼时间">
-        <div class="fish-copy">
-          <p>摸鱼正计时</p>
-          <strong id="fish-elapsed">00:00:00</strong>
-          <span id="fish-status">先干一会儿，再快乐一下。</span>
-        </div>
-        <div class="fish-actions">
-          <button type="button" id="fish-toggle">开始</button>
-          <button type="button" id="fish-reset">清零</button>
-        </div>
-      </section>
-
-      <section class="wake-panel" aria-label="屏幕常亮">
-        <div class="wake-copy">
-          <p>屏幕常亮</p>
-          <strong id="wake-label">未开启</strong>
-          <span id="wake-status">打开后，页面可见时保持常亮。</span>
-        </div>
-        <button class="wake-button" type="button" id="wake-toggle" aria-pressed="false">开启</button>
-      </section>
-
-      <section class="phase-grid" aria-label="工作时间表">
-        <article class="phase-card" id="morning-start-card">
-          <div class="phase-card-top">
-            <p>上午上班</p>
-            <strong id="morning-start-time-label">09:30</strong>
+      <section class="page-view is-active" id="page-countdown" data-page="countdown" aria-label="倒计时">
+        <section class="hero-panel" aria-live="polite">
+          <p class="stage-label" id="stage-label">正在计算</p>
+          <div class="countdown" id="countdown">--:--:--</div>
+          <p class="target-line" id="target-line">读取本机时间</p>
+          <div class="progress-track" aria-hidden="true">
+            <span id="progress-bar"></span>
           </div>
-          <p class="phase-status" id="morning-start-status">未开始</p>
-        </article>
+        </section>
 
-        <article class="phase-card" id="noon-card">
-          <div class="phase-card-top">
-            <p>中午下班</p>
-            <strong id="noon-time-label">12:00</strong>
+        <section class="wake-up-panel" id="wake-up-panel" aria-label="起床倒计时" aria-live="polite">
+          <div class="wake-up-copy">
+            <p>起床倒计时</p>
+            <strong id="wake-up-countdown">--:--:--</strong>
+            <span id="wake-up-status">前一晚 22:00 开始，起床后停止。</span>
           </div>
-          <p class="phase-status" id="noon-status">未开始</p>
-        </article>
+          <div class="wake-up-time">
+            <span>起床</span>
+            <strong id="wake-up-time-label">07:30</strong>
+          </div>
+        </section>
 
-        <article class="phase-card" id="afternoon-start-card">
-          <div class="phase-card-top">
-            <p>下午上班</p>
-            <strong id="afternoon-start-time-label">14:00</strong>
+        <section class="leave-panel" id="leave-panel" aria-label="上班出门倒计时" aria-live="polite">
+          <div class="leave-copy">
+            <p>上班出门倒计时</p>
+            <strong id="leave-countdown">--:--:--</strong>
+            <span id="leave-status">工作日 07:00 开始，出门后停止。</span>
           </div>
-          <p class="phase-status" id="afternoon-start-status">未开始</p>
-        </article>
+          <div class="leave-time">
+            <span>必须出门</span>
+            <strong id="leave-time-label">08:50</strong>
+          </div>
+        </section>
 
-        <article class="phase-card" id="evening-card">
-          <div class="phase-card-top">
-            <p>下午下班</p>
-            <strong id="evening-time-label">18:00</strong>
+        <section class="summary-row" aria-label="当前规则">
+          <div>
+            <span>计时日</span>
+            <strong id="active-days-label">周一至周五</strong>
           </div>
-          <p class="phase-status" id="evening-status">未开始</p>
-        </article>
+          <div>
+            <span>下次目标</span>
+            <strong id="next-target-label">上午上班</strong>
+          </div>
+        </section>
       </section>
 
-      <section class="summary-row" aria-label="当前规则">
-        <div>
-          <span>计时日</span>
-          <strong id="active-days-label">周一至周五</strong>
-        </div>
-        <div>
-          <span>下次目标</span>
-          <strong id="next-target-label">上午上班</strong>
-        </div>
-      </section>
-    </main>
+      <section class="page-view" id="page-fish" data-page="fish" aria-label="摸鱼">
+        <section class="fish-panel" aria-label="摸鱼时间">
+          <div class="fish-copy">
+            <p>摸鱼正计时</p>
+            <strong id="fish-elapsed">00:00:00</strong>
+            <span id="fish-status">先干一会儿，再快乐一下。</span>
+          </div>
+          <div class="fish-actions">
+            <button type="button" id="fish-toggle">开始</button>
+            <button type="button" id="fish-reset">清零</button>
+          </div>
+        </section>
 
-    <dialog class="settings-dialog" id="settings-dialog" aria-labelledby="settings-title">
-      <form method="dialog" class="settings-card" id="settings-form">
+        <section class="wake-panel" aria-label="屏幕常亮">
+          <div class="wake-copy">
+            <p>屏幕常亮</p>
+            <strong id="wake-label">未开启</strong>
+            <span id="wake-status">打开后，页面可见时保持常亮。</span>
+          </div>
+          <button class="wake-button" type="button" id="wake-toggle" aria-pressed="false">开启</button>
+        </section>
+
+        <section class="phase-grid" aria-label="工作时间表">
+          <article class="phase-card" id="morning-start-card">
+            <div class="phase-card-top">
+              <p>上午上班</p>
+              <strong id="morning-start-time-label">09:30</strong>
+            </div>
+            <p class="phase-status" id="morning-start-status">未开始</p>
+          </article>
+
+          <article class="phase-card" id="noon-card">
+            <div class="phase-card-top">
+              <p>中午下班</p>
+              <strong id="noon-time-label">12:00</strong>
+            </div>
+            <p class="phase-status" id="noon-status">未开始</p>
+          </article>
+
+          <article class="phase-card" id="afternoon-start-card">
+            <div class="phase-card-top">
+              <p>下午上班</p>
+              <strong id="afternoon-start-time-label">14:00</strong>
+            </div>
+            <p class="phase-status" id="afternoon-start-status">未开始</p>
+          </article>
+
+          <article class="phase-card" id="evening-card">
+            <div class="phase-card-top">
+              <p>下午下班</p>
+              <strong id="evening-time-label">18:00</strong>
+            </div>
+            <p class="phase-status" id="evening-status">未开始</p>
+          </article>
+        </section>
+      </section>
+
+      <section class="page-view" id="page-settings" data-page="settings" aria-label="设置">
+        <form class="settings-card settings-page-card" id="settings-form">
         <div class="settings-head">
           <h2 id="settings-title">设置</h2>
-          <button class="icon-button compact" id="close-settings" value="close" aria-label="关闭设置">
-            <span aria-hidden="true">×</span>
-          </button>
         </div>
 
         <label class="field">
@@ -183,8 +183,15 @@
           <button class="primary-button" id="save-settings" type="submit">保存</button>
         </div>
       </form>
-    </dialog>
+      </section>
+    </main>
 
-    <script src="./app.js?v=20260724-7" defer></script>
+    <nav class="tabbar" aria-label="页面切换">
+      <button class="tab-button is-active" type="button" data-page-target="countdown" aria-selected="true">倒计时</button>
+      <button class="tab-button" type="button" data-page-target="fish" aria-selected="false">摸鱼</button>
+      <button class="tab-button" type="button" data-page-target="settings" aria-selected="false">设置</button>
+    </nav>
+
+    <script src="./app.js?v=20260724-9" defer></script>
   </body>
 </html>
