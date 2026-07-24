@@ -1,11 +1,13 @@
 const STORAGE_KEY = "offwork-countdown.v1.settings";
 const FISH_STORAGE_KEY = "offwork-countdown.v1.fishRecords";
-const APP_VERSION = "2026.07.24-9";
+const APP_VERSION = "2026.07.24-10";
 const WAKE_UP_COUNTDOWN_START_TIME = "22:00";
 const LEAVE_COUNTDOWN_START_TIME = "07:00";
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 const DEFAULT_SETTINGS = {
   wakeUpTime: "07:30",
+  wakeUpMode: "workdays",
   leaveTime: "08:50",
   morningStartTime: "09:30",
   noonTime: "12:00",
@@ -36,6 +38,7 @@ const els = {
   wakeUpCountdown: document.querySelector("#wake-up-countdown"),
   wakeUpStatus: document.querySelector("#wake-up-status"),
   wakeUpTimeLabel: document.querySelector("#wake-up-time-label"),
+  wakeUpScopeLabel: document.querySelector("#wake-up-scope-label"),
   leavePanel: document.querySelector("#leave-panel"),
   leaveCountdown: document.querySelector("#leave-countdown"),
   leaveStatus: document.querySelector("#leave-status"),
@@ -66,6 +69,7 @@ const els = {
   openSettings: document.querySelector("#open-settings"),
   form: document.querySelector("#settings-form"),
   wakeUpInput: document.querySelector("#wake-up-time"),
+  wakeUpModeInputs: document.querySelectorAll('input[name="wakeUpMode"]'),
   leaveInput: document.querySelector("#leave-time"),
   morningStartInput: document.querySelector("#morning-start-time"),
   noonInput: document.querySelector("#noon-time"),
@@ -180,6 +184,7 @@ function loadSettings() {
     const hasWorkStartTimes = isTime(parsed.morningStartTime) && isTime(parsed.afternoonStartTime);
     return {
       wakeUpTime: isTime(parsed.wakeUpTime) ? parsed.wakeUpTime : DEFAULT_SETTINGS.wakeUpTime,
+      wakeUpMode: normalizeWakeUpMode(parsed.wakeUpMode),
       leaveTime: isTime(parsed.leaveTime) ? parsed.leaveTime : DEFAULT_SETTINGS.leaveTime,
       morningStartTime: hasWorkStartTimes ? parsed.morningStartTime : DEFAULT_SETTINGS.morningStartTime,
       noonTime: isTime(parsed.noonTime) ? parsed.noonTime : DEFAULT_SETTINGS.noonTime,
@@ -224,6 +229,9 @@ function renderDayOptions() {
 
 function hydrateSettingsForm() {
   els.wakeUpInput.value = settings.wakeUpTime;
+  els.wakeUpModeInputs.forEach((input) => {
+    input.checked = input.value === settings.wakeUpMode;
+  });
   els.leaveInput.value = settings.leaveTime;
   els.morningStartInput.value = settings.morningStartTime;
   els.noonInput.value = settings.noonTime;
@@ -242,6 +250,7 @@ function readSettingsForm() {
     .map((input) => Number(input.value));
   return {
     wakeUpTime: els.wakeUpInput.value,
+    wakeUpMode: normalizeWakeUpMode(els.form.querySelector('input[name="wakeUpMode"]:checked')?.value),
     leaveTime: els.leaveInput.value,
     morningStartTime: els.morningStartInput.value,
     noonTime: els.noonInput.value,
@@ -361,6 +370,7 @@ function renderState(now, state) {
   els.countdown.textContent = formatDuration(state.target - now);
   els.targetLine.textContent = formatTargetLine(state.target, state.phase);
   els.wakeUpTimeLabel.textContent = settings.wakeUpTime;
+  els.wakeUpScopeLabel.textContent = formatWakeUpScope(settings);
   els.leaveTimeLabel.textContent = settings.leaveTime;
   els.morningStartTimeLabel.textContent = settings.morningStartTime;
   els.noonTimeLabel.textContent = settings.noonTime;
@@ -380,7 +390,7 @@ function renderWakeUpPanel(now) {
   const windowState = findNextRoutineWindow(
     now,
     settings.wakeUpTime,
-    settings.activeDays,
+    getWakeUpActiveDays(settings),
     -1,
     WAKE_UP_COUNTDOWN_START_TIME
   );
@@ -693,6 +703,15 @@ function formatActiveDays(activeDays) {
   return ordered.join("、");
 }
 
+function getWakeUpActiveDays(currentSettings) {
+  return currentSettings.wakeUpMode === "daily" ? ALL_DAYS : currentSettings.activeDays;
+}
+
+function formatWakeUpScope(currentSettings) {
+  if (currentSettings.wakeUpMode === "daily") return "每天";
+  return formatActiveDays(currentSettings.activeDays);
+}
+
 function toggleFishTimer(date = new Date()) {
   const key = todayKey(date);
   const record = getTodayFishRecord(date);
@@ -743,6 +762,10 @@ function normalizeActiveDays(value) {
     .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
     .sort((a, b) => a - b);
   return clean.length ? clean : [...DEFAULT_SETTINGS.activeDays];
+}
+
+function normalizeWakeUpMode(value) {
+  return value === "daily" ? "daily" : "workdays";
 }
 
 function normalizeFishAllowance(value) {

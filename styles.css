@@ -263,6 +263,15 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+.wake-up-time em {
+  display: block;
+  margin-top: 6px;
+  color: #315c78;
+  font-size: 0.76rem;
+  font-style: normal;
+  line-height: 1.2;
+}
+
 .leave-panel {
   display: flex;
   align-items: center;
@@ -580,37 +589,50 @@ h2 {
   font-size: 1.05rem;
 }
 
-.day-picker {
+.day-picker,
+.option-picker {
   margin: 16px 0 0;
   padding: 0;
   border: 0;
 }
 
-.day-picker legend {
+.day-picker legend,
+.option-picker legend {
   padding: 0;
   color: var(--muted);
   font-size: 0.95rem;
 }
 
-.day-options {
+.day-options,
+.choice-options {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   margin-top: 10px;
 }
 
-.day-toggle {
+.day-options {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.choice-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.day-toggle,
+.choice-toggle {
   position: relative;
   min-width: 0;
 }
 
-.day-toggle input {
+.day-toggle input,
+.choice-toggle input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.day-toggle span {
+.day-toggle span,
+.choice-toggle span {
   display: grid;
   min-height: 38px;
   place-items: center;
@@ -621,7 +643,13 @@ h2 {
   font-size: 0.9rem;
 }
 
-.day-toggle input:checked + span {
+.choice-toggle span {
+  min-height: 42px;
+  padding: 0 8px;
+}
+
+.day-toggle input:checked + span,
+.choice-toggle input:checked + span {
   border-color: var(--primary);
   color: white;
   background: var(--primary);
